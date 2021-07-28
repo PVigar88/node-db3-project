@@ -18,16 +18,15 @@ function find() {
     2A- When you have a grasp on the query go ahead and build it in Knex.
     Return from this function the resulting dataset.
   */
-  return db("schemes")
-    .join("steps", "schemes.scheme_id", "steps.scheme_id")
-    .select("*")
-    .count("steps.step_id")
-    .as("number_of_steps")
-    .groupBy("schemes.scheme_id")
-    .orderBy("schemes.scheme_id");
+  return db("schemes as sc")
+    .leftJoin("steps as st", "sc.scheme_id", "st.scheme_id")
+    .select("sc.*")
+    .count("st.step_id as number_of_steps")
+    .groupBy("sc.scheme_id")
+    .orderBy("sc.scheme_id");
 }
 
-function findById(scheme_id) {
+async function findById(scheme_id) {
   // EXERCISE B
   /*
     1B- Study the SQL query below running it in SQLite Studio against `data/schemes.db3`:
@@ -43,7 +42,13 @@ function findById(scheme_id) {
 
     2B- When you have a grasp on the query go ahead and build it in Knex
     making it parametric: instead of a literal `1` you should use `scheme_id`.
-
+*/
+  // return db("schemes as sc")
+  //   .leftJoin("steps as st", "sc.scheme_id", "st.scheme_id")
+  //   .select("sc.scheme_name", "st.*")
+  //   .where({ "sc.scheme_id": scheme_id })
+  //   .orderBy("st.step_number");
+  /*
     3B- Test in Postman and see that the resulting data does not look like a scheme,
     but more like an array of steps each including scheme information:
 
@@ -94,6 +99,36 @@ function findById(scheme_id) {
         "steps": []
       }
   */
+
+  // return db("schemes as sc")
+  //   .leftJoin("steps as st", "sc.scheme_id", "st.scheme_id")
+  //   .select([
+  //     "sc.scheme_id",
+  //     db.raw("group_concat(st.instructions) order st.step_number asc"),
+  //   ])
+  //   .where({ "sc.scheme_id": scheme_id });
+
+  const rows = await db("schemes as sc")
+    .leftJoin("steps as st", "sc.scheme_id", "st.scheme_id")
+    .where("sc.scheme_id", scheme_id)
+    .select("sc.*", "sc.scheme_name", "sc.scheme_id")
+    .orderBy("st.step_number");
+  const result = {
+    scheme_id: rows[0].scheme_id,
+    scheme_name: rows[0].scheme_name,
+    steps: [],
+  };
+  rows.forEach((row) => {
+    if (!row.step_id) {
+      result.steps.push({
+        scheme_id: row.scheme_id,
+        scheme_name: row.scheme_name,
+        step_number: row.step_number,
+        instructions: row.instructions,
+      });
+    }
+  });
+  return result;
 }
 
 function findSteps(scheme_id) {
@@ -118,22 +153,35 @@ function findSteps(scheme_id) {
         }
       ]
   */
+
+  return db("steps as st")
+    .leftJoin("schemes as sc", "st.scheme_id", "sc.scheme_id")
+    .select("step_id", "step_number", "instructions", "scheme_name")
+    .where({ "st.scheme_id": scheme_id })
+    .orderBy("step_number");
 }
 
-function add(scheme) {
+async function add(scheme) {
   // EXERCISE D
   /*
     1D- This function creates a new scheme and resolves to _the newly created scheme_.
   */
+  const [id] = await db("schemes").insert(scheme);
+
+  return findById(id);
 }
 
-function addStep(scheme_id, step) {
+async function addStep(scheme_id, step) {
   // EXERCISE E
   /*
     1E- This function adds a step to the scheme with the given `scheme_id`
     and resolves to _all the steps_ belonging to the given `scheme_id`,
     including the newly created one.
   */
+
+  db("steps").insert(step).where("scheme_id", scheme_id);
+
+  return findSteps(scheme_id);
 }
 
 module.exports = {

@@ -9,7 +9,7 @@ const Scheme = require("./scheme-model");
   }
 */
 const checkSchemeId = (req, res, next) => {
-  const { scheme_id } = res.body;
+  const { scheme_id } = req.params;
 
   if (!scheme_id) {
     res
