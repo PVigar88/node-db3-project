@@ -113,22 +113,23 @@ async function findById(scheme_id) {
     .where("sc.scheme_id", scheme_id)
     .select("sc.*", "sc.scheme_name", "sc.scheme_id")
     .orderBy("st.step_number");
-  const result = {
+
+  const results = {
     scheme_id: rows[0].scheme_id,
     scheme_name: rows[0].scheme_name,
     steps: [],
   };
+
   rows.forEach((row) => {
-    if (!row.step_id) {
-      result.steps.push({
-        scheme_id: row.scheme_id,
-        scheme_name: row.scheme_name,
+    if (row.step_id) {
+      results.steps.push({
+        step_id: row.step_id,
         step_number: row.step_number,
         instructions: row.instructions,
       });
     }
   });
-  return result;
+  return results;
 }
 
 function findSteps(scheme_id) {
@@ -168,7 +169,7 @@ async function add(scheme) {
   */
   const [id] = await db("schemes").insert(scheme);
 
-  return findById(id);
+  return findByid(id);
 }
 
 async function addStep(scheme_id, step) {
@@ -179,7 +180,9 @@ async function addStep(scheme_id, step) {
     including the newly created one.
   */
 
-  db("steps").insert(step).where("scheme_id", scheme_id);
+  await db("steps")
+    .insert({ ...step, scheme_id })
+    .where("scheme_id", scheme_id);
 
   return findSteps(scheme_id);
 }
